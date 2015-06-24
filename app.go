@@ -22,6 +22,10 @@ func main() {
 		app.Headers["Access-Control-Allow-Origin"] = origin
 	}
 
+	if cacheControl := env.Get("CACHE_CONTROL"); len(cacheControl) > 0 {
+		app.Headers["Cache-Control"] = cacheControl
+	}
+
 	// Register actions
 	app.AddRoute("GET", "/:bucket/:file", newGetFileAction)
 
