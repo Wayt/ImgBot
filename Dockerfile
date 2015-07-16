@@ -12,6 +12,9 @@ WORKDIR /gopath/src/github.com/wayt/imgbot
 RUN go get
 RUN go install
 
+# Custom workdir for configuration
+WORKDIR /root
+
 ENTRYPOINT ["/gopath/bin/imgbot"]
 
 EXPOSE 8080
