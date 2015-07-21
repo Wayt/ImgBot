@@ -123,5 +123,5 @@ func (this *getFileAction) Run() {
 
 	this.Context.Debugln("S3 GET Time:", s3GetTime.Sub(startTime), " - Resize Time:", imgResizeTime.Sub(s3GetTime), " - Encode Time:", imgEncodeTime.Sub(imgResizeTime))
 
-	this.SendByte(200, data, fmt.Sprintf("Content-Type: %s", mimeType), fmt.Sprintf("Content-Length: %d", len(data)))
+	this.SendByte(200, data, fmt.Sprintf("Content-Type: %s", mimeType))
 }
