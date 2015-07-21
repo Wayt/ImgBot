@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"github.com/nfnt/resize"
 	"github.com/wayt/happyngine"
-	"github.com/wayt/happyngine/s3"
+	"github.com/wayt/happyngine/env"
 	"image"
 	"image/gif"
 	"image/jpeg"
 	"image/png"
+	"io/ioutil"
 	"mime"
+	"net/http"
+	"net/url"
 	"path/filepath"
 	"time"
 )
@@ -39,24 +42,57 @@ func min(v1, v2 uint) uint {
 	return v2
 }
 
-func (this *getFileAction) Run() {
-
-	startTime := time.Now()
+func (this *getFileAction) getFile() ([]byte, bool) {
 
 	bucket := this.Form.Elem("bucket").FormValue()
 	file := this.Form.Elem("file").FormValue()
 
-	data, err := s3.Get(bucket, file)
-	if err != nil {
-		if err.Error() == "The specified key does not exist." {
-			this.AddError(404, `not_found_404`)
-			return
-		}
+	u := url.URL{
+		Scheme: "http",
+		Host:   fmt.Sprintf("s3-%s.amazonaws.com", env.Get("AWS_DEFAULT_REGION")),
+		Path:   fmt.Sprintf("%s/%s", bucket, file),
+	}
 
+	q := u.Query()
+
+	for name := range this.Context.Request.URL.Query() {
+		q.Set(name, this.Context.Request.URL.Query().Get(name))
+	}
+	u.RawQuery = q.Encode()
+
+	resp, err := http.Get(u.String())
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
 		panic(err)
 	}
 
+	if resp.StatusCode >= 300 {
+		contentType := resp.Header.Get("Content-Type")
+		this.SendByte(resp.StatusCode, body, fmt.Sprintf("Content-Type: %s", contentType))
+		return nil, false
+	}
+
+	return body, true
+}
+
+func (this *getFileAction) Run() {
+
+	file := this.Form.Elem("file").FormValue()
+
+	startTime := time.Now()
+
+	data, ok := this.getFile()
+	if !ok {
+		return
+	}
+
 	s3GetTime := time.Now()
+
 	var imgResizeTime, imgEncodeTime time.Time
 
 	ext := filepath.Ext(file)
